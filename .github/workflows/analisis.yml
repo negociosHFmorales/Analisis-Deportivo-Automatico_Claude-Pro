@@ -1,0 +1,17 @@
+name: Analizar Partidos
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  analizar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
+      - name: Analizar datos
+        run: |
+          python analizar_partidos.py "${{ github.event.issue.body }}"
