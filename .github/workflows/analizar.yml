@@ -1,0 +1,58 @@
+name: Analizar Partidos Deportivos
+
+# Este workflow se ejecuta cuando se crea un nuevo issue
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  analizar:
+    # Solo ejecutar si el issue tiene "Análisis de partidos" en el título
+    if: contains(github.event.issue.title, 'Análisis de partidos')
+    
+    runs-on: ubuntu-latest
+    
+    steps:
+      # Paso 1: Descargar el código del repositorio
+      - name: Descargar código
+        uses: actions/checkout@v3
+      
+      # Paso 2: Instalar Python
+      - name: Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      # Paso 3: Instalar las librerías necesarias
+      - name: Instalar dependencias
+        run: |
+          pip install pandas numpy scipy requests
+          pip install python-dateutil
+      
+      # Paso 4: Ejecutar el análisis
+      - name: Ejecutar análisis de partidos
+        run: |
+          echo "Iniciando análisis de partidos..."
+          echo "Datos del issue: ${{ github.event.issue.body }}"
+          python analizar_partidos.py "${{ github.event.issue.body }}"
+      
+      # Paso 5: Comentar los resultados en el issue
+      - name: Publicar resultados
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            let resultado = 'No se encontraron resultados';
+            
+            // Leer el archivo de resultados si existe
+            if (fs.existsSync('resultados.txt')) {
+              resultado = fs.readFileSync('resultados.txt', 'utf8');
+            }
+            
+            // Crear un comentario en el issue con los resultados
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 📊 Resultados del Análisis\n\n${resultado}\n\n✅ Análisis completado a las ${new Date().toLocaleString('es-CO', {timeZone: 'America/Bogota'})}`
+            });
