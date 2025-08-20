@@ -1,69 +1,34 @@
-import os
 import json
 import sys
-from datetime import datetime
+import math
 
-def analizar_partidos():
-    """
-    Función principal que analiza los partidos
-    """
-    print("Iniciando análisis...")
+def analizar_partidos(datos_texto):
+    """Analiza los datos del issue"""
     
-    # Obtener los datos del issue (vienen de Make.com)
-    datos_raw = os.environ.get('DATOS_PARTIDOS', '{}')
+    # Aquí procesarías los datos reales
+    print("Analizando datos recibidos...")
     
-    try:
-        # Intentar parsear los datos
-        if datos_raw.startswith('2. Cookie headers[]'):
-            # Los datos vienen del campo Description de Make.com
-            # Extraer solo la parte JSON si existe
-            datos = {"mensaje": "Datos recibidos para análisis", "timestamp": datetime.now().isoformat()}
-        else:
-            datos = json.loads(datos_raw)
-    except:
-        datos = {"error": "No se pudieron parsear los datos", "raw": datos_raw[:100]}
-    
-    # Aquí va tu lógica de análisis
-    # Por ahora, solo un análisis simple de ejemplo
-    resultado = f"""
-## 🎯 Resultados del Análisis Deportivo
+    # Por ahora, crear un análisis de ejemplo
+    with open('resultados.txt', 'w') as f:
+        f.write("""
+🎯 APUESTAS RECOMENDADAS HOY:
 
-**Fecha y hora del análisis:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+1. MEJOR APUESTA:
+   Partido: Barcelona vs Madrid
+   Apuesta: Victoria Local
+   Cuota: 2.10
+   Probabilidad: 65%
+   Apostar: 2% del bankroll
 
-### 📊 Resumen de Partidos Analizados
-- Total de partidos revisados: 5
-- Partidos con valor de apuesta: 2
-
-### ✅ Mejores Apuestas Recomendadas:
-
-#### 1. Barcelona vs Real Madrid
-- **Probabilidad calculada:** 65% victoria local
-- **Cuota ofrecida:** 2.10
-- **Valor esperado:** +5.65%
-- **Recomendación:** APOSTAR al Barcelona
-- **Cantidad sugerida:** 2% del bankroll
-
-#### 2. Manchester City vs Liverpool  
-- **Probabilidad calculada:** 48% empate
-- **Cuota ofrecida:** 3.50
-- **Valor esperado:** +3.20%
-- **Recomendación:** APOSTAR al empate
-- **Cantidad sugerida:** 1% del bankroll
-
-### 📈 Estadísticas del Modelo
-- Precisión histórica: 67%
-- ROI últimos 30 días: +8.3%
-
----
-*Análisis automático realizado usando modelo Poisson + ELO ratings*
-    """
-    
-    # Guardar el resultado en un archivo
-    with open('resultado_analisis.txt', 'w', encoding='utf-8') as f:
-        f.write(resultado)
-    
-    print("Análisis completado!")
-    return resultado
+2. VALOR ENCONTRADO:
+   Partido: Lakers vs Bulls
+   Apuesta: Más de 220 puntos
+   Cuota: 1.95
+   Probabilidad: 58%
+   Apostar: 1% del bankroll
+        """)
 
 if __name__ == "__main__":
-    analizar_partidos()
+    if len(sys.argv) > 1:
+        datos = " ".join(sys.argv[1:])
+        analizar_partidos(datos)
