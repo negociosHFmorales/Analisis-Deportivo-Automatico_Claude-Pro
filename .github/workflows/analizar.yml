@@ -1,58 +1,83 @@
 name: Analizar Partidos Deportivos
 
-# Este workflow se ejecuta cuando se crea un nuevo issue
 on:
   issues:
     types: [opened]
+  schedule:
+    # Ejecutar automáticamente cada día a las 8:00 AM
+    - cron: '0 8 * * *'
+  workflow_dispatch: # Permite ejecutar manualmente
 
 jobs:
   analizar:
-    # Solo ejecutar si el issue tiene "Análisis de partidos" en el título
-    if: contains(github.event.issue.title, 'Análisis de partidos')
+    if: contains(github.event.issue.title, 'Análisis de partidos') || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     
     runs-on: ubuntu-latest
     
     steps:
-      # Paso 1: Descargar el código del repositorio
-      - name: Descargar código
-        uses: actions/checkout@v3
+      - name: 📥 Descargar código
+        uses: actions/checkout@v4
       
-      # Paso 2: Instalar Python
-      - name: Configurar Python
+      - name: 🐍 Configurar Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: '3.11'
       
-      # Paso 3: Instalar las librerías necesarias
-      - name: Instalar dependencias
+      - name: 📦 Instalar dependencias
         run: |
-          pip install pandas numpy scipy requests
-          pip install python-dateutil
+          pip install --upgrade pip
+          pip install pandas numpy scipy requests python-dateutil
+          pip install --no-cache-dir requests urllib3
       
-      # Paso 4: Ejecutar el análisis
-      - name: Ejecutar análisis de partidos
+      - name: 🔍 Verificar conexión a APIs
         run: |
-          echo "Iniciando análisis de partidos..."
-          echo "Datos del issue: ${{ github.event.issue.body }}"
-          python analizar_partidos.py "${{ github.event.issue.body }}"
+          echo "Verificando conectividad..."
+          curl -I https://api.the-odds-api.com/v4/sports/ || echo "Error de conectividad"
       
-      # Paso 5: Comentar los resultados en el issue
-      - name: Publicar resultados
-        uses: actions/github-script@v6
+      - name: 🏆 Ejecutar análisis deportivo
+        env:
+          API_SPORTS_KEY: ${{ secrets.API_SPORTS_KEY }}
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+        run: |
+          echo "🚀 Iniciando análisis con datos reales..."
+          python analizar_partidos.py "${{ github.event.issue.body || 'Análisis automático programado' }}"
+      
+      - name: 📊 Publicar resultados
+        uses: actions/github-script@v7
+        if: github.event_name == 'issues'
         with:
           script: |
             const fs = require('fs');
-            let resultado = 'No se encontraron resultados';
+            let resultado = '❌ No se pudieron obtener resultados';
             
-            // Leer el archivo de resultados si existe
-            if (fs.existsSync('resultados.txt')) {
-              resultado = fs.readFileSync('resultados.txt', 'utf8');
+            try {
+              if (fs.existsSync('resultados.txt')) {
+                resultado = fs.readFileSync('resultados.txt', 'utf8');
+              }
+            } catch (error) {
+              console.log('Error leyendo resultados:', error);
+              resultado = `❌ Error al procesar: ${error.message}`;
             }
             
-            // Crear un comentario en el issue con los resultados
-            github.rest.issues.createComment({
+            const fecha = new Date().toLocaleString('es-CO', {
+              timeZone: 'America/Bogota',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+            
+            await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `## 📊 Resultados del Análisis\n\n${resultado}\n\n✅ Análisis completado a las ${new Date().toLocaleString('es-CO', {timeZone: 'America/Bogota'})}`
+              body: `## 📊 Resultados del Análisis Deportivo\n\n${resultado}\n\n---\n✅ **Análisis completado:** ${fecha}\n🤖 **Ejecutado por:** GitHub Actions`
             });
+      
+      - name: 💾 Guardar resultados como artefacto
+        uses: actions/upload-artifact@v3
+        with:
+          name: analisis-deportivo-${{ github.run_number }}
+          path: resultados.txt
+          retention-days: 30
