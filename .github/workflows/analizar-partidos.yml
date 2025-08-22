@@ -1,0 +1,136 @@
+name: Analizar Partidos Deportivos
+
+# Este workflow se ejecuta cuando:
+# 1. Se crea un nuevo issue
+# 2. Cada día a las 8 AM automáticamente  
+# 3. Manualmente cuando quieras
+on:
+  issues:
+    types: [opened]
+  schedule:
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+
+jobs:
+  analizar:
+    # Acepta títulos con o sin tilde, mayúsculas o minúsculas
+    if: |
+      contains(toLower(github.event.issue.title), 'analisis de partidos') || 
+      contains(toLower(github.event.issue.title), 'análisis de partidos') ||
+      github.event_name == 'schedule' || 
+      github.event_name == 'workflow_dispatch'
+    
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Descargar código del repositorio
+        uses: actions/checkout@v4
+      
+      - name: 🐍 Configurar Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      # Paso adicional para debugear
+      - name: 🔍 Mostrar información del evento
+        run: |
+          echo "Tipo de evento: ${{ github.event_name }}"
+          echo "Título del issue: ${{ github.event.issue.title }}"
+          echo "Cuerpo del issue: ${{ github.event.issue.body }}"
+          echo "Hora actual: $(date)"
+      
+      - name: 📦 Instalar librerías de Python
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas numpy scipy requests python-dateutil
+          echo "✅ Dependencias instaladas correctamente"
+      
+      - name: 🌐 Probar conectividad a internet
+        run: |
+          echo "Probando conectividad..."
+          curl -I https://api.the-odds-api.com/v4/sports/ || echo "Sin conectividad a The Odds API"
+          curl -I https://v3.football.api-sports.io/ || echo "Sin conectividad a API-Sports"
+      
+      - name: 🏆 Ejecutar análisis (versión de prueba)
+        run: |
+          echo "🚀 Iniciando análisis deportivo..."
+          echo "Creando archivo de prueba..."
+          cat > resultados_prueba.txt << 'EOF'
+          🎯 ANÁLISIS DEPORTIVO - MODO PRUEBA
+          📅 Fecha: $(date '+%Y-%m-%d %H:%M:%S')
+          
+          📊 ESTADO DEL SISTEMA:
+          ✅ GitHub Actions funcionando correctamente
+          ✅ Python configurado
+          ✅ Dependencias instaladas
+          
+          🔧 PRÓXIMOS PASOS:
+          1. Configurar API keys en Settings → Secrets
+          2. Habilitar APIs deportivas
+          3. Ejecutar análisis con datos reales
+          
+          💡 CONSEJO:
+          Este es un análisis de prueba. Una vez configuradas las APIs,
+          recibirás datos reales de partidos y cuotas deportivas.
+          EOF
+          
+          echo "✅ Archivo de resultados creado"
+          cat resultados_prueba.txt
+      
+      - name: 📊 Comentar resultados en el issue
+        uses: actions/github-script@v7
+        if: github.event_name == 'issues'
+        with:
+          script: |
+            const fs = require('fs');
+            let resultado = '❌ No se pudo generar el reporte';
+            
+            // Intentar leer el archivo de resultados
+            try {
+              if (fs.existsSync('resultados_prueba.txt')) {
+                resultado = fs.readFileSync('resultados_prueba.txt', 'utf8');
+              }
+            } catch (error) {
+              console.log('Error leyendo archivo:', error);
+              resultado = `❌ Error técnico: ${error.message}`;
+            }
+            
+            // Obtener fecha en formato colombiano
+            const ahora = new Date();
+            const fechaCol = ahora.toLocaleString('es-CO', {
+              timeZone: 'America/Bogota',
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long', 
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+            
+            // Crear el comentario
+            const comentario = `## 🤖 Análisis Deportivo Automatizado
+            
+${resultado}
+
+---
+**📅 Procesado:** ${fechaCol}  
+**🔧 Sistema:** GitHub Actions  
+**📍 Ubicación:** Bogotá, Colombia  
+**✨ Estado:** Funcionando correctamente`;
+
+            // Publicar comentario
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comentario
+            });
+            
+            console.log('✅ Comentario publicado exitosamente');
+      
+      - name: 💾 Guardar resultados como archivo descargable
+        uses: actions/upload-artifact@v4
+        with:
+          name: analisis-deportivo-${{ github.run_number }}
+          path: resultados_prueba.txt
+          retention-days: 7
